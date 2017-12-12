@@ -1,0 +1,62 @@
+---
+title: "Project Scritp"
+author: "HPSUN"
+date: "2017年12月12日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
+```
+
+## Download data and process
+```{r}
+fileUrl <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+if (!file.exists("Coursera-SwiftKey.zip")) {
+    download.file(fileUrl,"Coursera-SwiftKey.zip",mode = "wb",method = "auto")
+}
+unzip("Coursera-SwiftKey.zip")
+Sys.setlocale(category = "LC_ALL", locale = "English_United States.1252")
+```
+data view
+```{r}
+con_n <- file(".\\final\\en_US\\en_US.news.txt", "r")
+line <- readLines(con_n, 1)
+longest = length(unlist(strsplit(line,"")))
+while(length(line)!=0){
+    line <- readLines(con_n, 1)
+    l = length(unlist(strsplit(line,"")))
+    if (l > longest){
+        longest <- l
+    }
+}
+longest
+close(con_n)
+```
+
+
+```{r}
+con_b <- file(".\\final\\en_US\\en_US.blogs.txt", "r")
+line <- readLines(con_b, 1)
+longest = length(unlist(strsplit(line,"")))
+while(length(line)!=0){
+    line <- readLines(con_n, 1)
+    l = length(unlist(strsplit(line,"")))
+    if (l > longest){
+        longest <- l
+    }
+}
+longest
+close(con_b)
+```
+
+```{r}
+con_t <- file(".\\final\\en_US\\en_US.twitter.txt", "r")
+love_count = 0
+hate_count = 0
+line <- readLines(con_b, 1)
+
+
+
+```
+
