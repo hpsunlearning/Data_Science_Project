@@ -1,0 +1,234 @@
+---
+title: "Week Two Milestone Report"
+author: "HPSUN"
+date: "2018年1月3日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE)
+```
+
+## Introduction
+This report is an exploratory analysis of the datasets. We will using these datasets to build a prediction algorithm apply to a mobile phone app SwiftKey, so that the app will guess what is next word user wants to input. This may save the user lot of time.  
+We are using corpora collected from publicly available sources by a web crawler. The corpora are in four languages and each language has three parts from webnews, blog and twitter. For easy analysis, I will only use the English dataset.
+
+## Data download and process
+```{r}
+fileUrl = "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+if (!file.exists("Coursera-SwiftKey.zip")) {
+    download.file(fileUrl,"Coursera-SwiftKey.zip",mode = "wb",method = "auto")
+}
+#unzip("Coursera-SwiftKey.zip")
+Sys.setlocale(category = "LC_ALL", locale = "English_United States.1252")
+```
+
+```{r}
+news_path = ".\\final\\en_US\\en_US.news.txt"
+blog_path = ".\\final\\en_US\\en_US.blogs.txt"
+twitter_path = ".\\final\\en_US\\en_US.twitter.txt"
+```
+
+## Data explore1
+In this part, I count the length of words in each corpora.  
+Load libraries
+```{r}
+library(tokenizers)
+library(tidytext)
+library(dplyr)
+library(tidyr)
+library(igraph)
+library(ggplot2)
+library(ggraph)
+
+len = function(line) {
+    length(unlist(tokenize_words(line)))
+} 
+```
+
+### news
+```{r}
+news = read.table(news_path,sep="\n",header=F,stringsAsFactors=F,quote = "",encoding = "UTF-8")
+words = sapply(as.list(news$V1),len)
+nws = sum(words)
+nls = length(words)
+nwm = mean(words,na.rm = T)
+```
+
+### blog
+```{r}
+blog = read.table(blog_path,sep="\n",header=F,stringsAsFactors=F,quote = "",encoding = "UTF-8")
+words = sapply(as.list(blog$V1),len)
+bws = sum(words)
+bls = length(words)
+bwm = mean(words,na.rm = T)
+```
+
+### twitter
+```{r}
+twitter = read.table(twitter_path,sep="\n",header=F,stringsAsFactors=F,quote = "",encoding = "UTF-8")
+words = sapply(as.list(twitter$V1),len)
+tws = sum(words)
+tls = length(words)
+twm = mean(words,na.rm = T)
+```
+
+## Data explore2
+Prepare some functions
+```{r}
+top_n_grams = function(grams_hist,n) {
+    dt = grams_hist[c(1:n),]
+    colnames(dt) = c("gram","count")
+    dt$gram = factor(dt$gram, levels=dt$gram[n:1])
+    title = paste("Top",n,"ngrams",sep=" ")
+    ggplot(dt,aes(x = gram, y = count)) + 
+        geom_col(show.legend = FALSE) + coord_flip() + 
+        labs(title=title,x="")
+}
+
+visualize_bigrams = function(bigrams) {
+  set.seed(2018)
+  a <- grid::arrow(type = "closed", length = unit(.1, "inches"))
+  bigrams %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(show.legend = FALSE, arrow = a) +
+    geom_node_point(color = "lightblue", size = 5) +
+    geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+    theme_void() + labs(title="Most common bigrams")
+}
+```
+
+### news
+```{r}
+n = nrow(news)
+set.seed(2018)
+ind = sample(c(1:n),floor(n/10))
+news2 = as.data.frame(news[ind,],stringsAsFactors = F)
+colnames(news2) = "V1"
+
+news1gram_Hist <- unnest_tokens(news2, unigram, V1, token = "ngrams", n = 1) %>% 
+    count(unigram, sort = TRUE)
+top_n_grams(news1gram_Hist,20)
+news1gram_Hist$cumprob = cumsum(news1gram_Hist$n)/sum(news1gram_Hist$n)
+nuw = nrow(news1gram_Hist)
+n50 = which(news1gram_Hist$cumprob > 0.5)[1]
+n90 = which(news1gram_Hist$cumprob > 0.9)[1]
+print(object.size(news1gram_Hist), units = "auto")
+rm(news1gram_Hist)
+
+news2gram_Hist <- unnest_tokens(news2, bigram, V1, token = "ngrams", n = 2) %>%  
+    count(bigram, sort = TRUE)
+top_n_grams(news2gram_Hist,20)
+print(object.size(news2gram_Hist), units = "auto")
+
+news3gram_Hist <- unnest_tokens(news2, trigram, V1, token = "ngrams", n = 3) %>% 
+    count(trigram, sort = TRUE)
+top_n_grams(news3gram_Hist,20)
+print(object.size(news3gram_Hist), units = "auto")
+rm(news3gram_Hist)
+
+bigram_graph <- news2gram_Hist %>% 
+    separate(bigram, c("word1", "word2"), sep = " ") %>% 
+    filter(n > 100) %>% 
+    graph_from_data_frame()
+visualize_bigrams(bigram_graph)
+rm(news2gram_Hist,bigram_graph)
+```
+### blog
+```{r}
+n = nrow(blog)
+set.seed(2018)
+ind = sample(c(1:n),floor(n/10))
+blog2 = as.data.frame(blog[ind,],stringsAsFactors = F)
+colnames(blog2) = "V1"
+
+blog1gram_Hist <- unnest_tokens(blog2, unigram, V1, token = "ngrams", n = 1) %>% 
+    count(unigram, sort = TRUE)
+top_n_grams(blog1gram_Hist,20)
+blog1gram_Hist$cumprob = cumsum(blog1gram_Hist$n)/sum(blog1gram_Hist$n)
+buw = nrow(blog1gram_Hist)
+b50 = which(blog1gram_Hist$cumprob > 0.5)[1]
+b90 = which(blog1gram_Hist$cumprob > 0.9)[1]
+print(object.size(blog1gram_Hist), units = "auto")
+rm(blog1gram_Hist)
+
+
+blog2gram_Hist <- unnest_tokens(blog2, bigram, V1, token = "ngrams", n = 2) %>%  
+    count(bigram, sort = TRUE)
+top_n_grams(blog2gram_Hist,20)
+print(object.size(blog2gram_Hist), units = "auto")
+
+blog3gram_Hist <- unnest_tokens(blog2, trigram, V1, token = "ngrams", n = 3) %>% 
+    count(trigram, sort = TRUE)
+top_n_grams(blog3gram_Hist,20)
+print(object.size(blog3gram_Hist), units = "auto")
+rm(blog3gram_Hist)
+
+bigram_graph <- blog2gram_Hist %>% 
+    separate(bigram, c("word1", "word2"), sep = " ") %>% 
+    filter(n > 1000) %>% 
+    graph_from_data_frame()
+visualize_bigrams(bigram_graph)
+rm(blog2gram_Hist,bigram_graph)
+```
+
+### twitter
+```{r}
+n = nrow(twitter)
+set.seed(2018)
+ind = sample(c(1:n),floor(n/10))
+twitter2 = as.data.frame(twitter[ind,],stringsAsFactors = F)
+colnames(twitter2) = "V1"
+
+twitter1gram_Hist <- unnest_tokens(twitter2, unigram, V1, token = "ngrams", n = 1) %>% 
+    count(unigram, sort = TRUE)
+top_n_grams(twitter1gram_Hist,20)
+twitter1gram_Hist$cumprob = cumsum(twitter1gram_Hist$n)/sum(twitter1gram_Hist$n)
+tuw = nrow(twitter1gram_Hist)
+t50 = which(twitter1gram_Hist$cumprob > 0.5)[1]
+t90 = which(twitter1gram_Hist$cumprob > 0.9)[1]
+print(object.size(twitter1gram_Hist), units = "auto")
+rm(twitter1gram_Hist)
+
+twitter2gram_Hist <- unnest_tokens(twitter2, bigram, V1, token = "ngrams", n = 2) %>%  
+    count(bigram, sort = TRUE)
+top_n_grams(twitter2gram_Hist,20)
+print(object.size(twitter2gram_Hist), units = "auto")
+
+twitter3gram_Hist <- unnest_tokens(twitter2, trigram, V1, token = "ngrams", n = 3) %>% 
+    count(trigram, sort = TRUE)
+top_n_grams(twitter3gram_Hist,20)
+print(object.size(twitter3gram_Hist), units = "auto")
+rm(twitter3gram_Hist)
+
+bigram_graph <- twitter2gram_Hist %>% 
+    separate(bigram, c("word1", "word2"), sep = " ") %>% 
+    filter(n > 1000) %>% 
+    graph_from_data_frame()
+visualize_bigrams(bigram_graph)
+rm(twitter2gram_Hist,bigram_graph)
+```
+
+## summary
+```{r}
+library(knitr)
+dt = t(data.frame(c(nwm,nls,nws,nuw,n50,n90),c(bwm,bls,bws,buw,b50,b90),c(twm,tls,tws,tuw,t50,t90)))
+colnames(dt) = c("mean words per line","lines","total words","unique words","50% coverage","90% coverage")
+rownames(dt) = c("news","blog","twitter")
+dt = as.data.frame(dt)
+kable(dt,digits=0,align='c',format="markdown",padding=2,format.args = list(big.mark = ","))
+```
+
+
+
+From results above, I find blog data has the longest average line, twitter data has the shortest. And news data are the smallest data set.  
+
+## conclusion 
+1. The three data sets are similar for the most frequent words like "the", "in", "a" and "of the", "in the", "to the", etc. These words and n-grams are the most frequently used word and phrase in English.   
+2. But besides these, three data set have a little differen in n-grams frequence. For example, blog and twitter have many "I ..." phrase than news. So, it's important to use all three data set to get a precise prediction.  
+3. Common words are very limited, 5-10% words will cover 90% words appeared in all data sets.  
+4. n-grams maybe a good way to predict the word next to input, but it needs large memory, I only used 10% of the data set, but the 3-grams took me 100-200 Mb memory.
+
+
+
+

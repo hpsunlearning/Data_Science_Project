@@ -35,4 +35,8 @@ vignettes/*.pdf
 # big files
 final
 Coursera-SwiftKey.zip
+cache
+data
+rsconnect
+backup
 

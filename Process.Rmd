@@ -1,0 +1,474 @@
+---
+title: "Data Science Capstone Project"
+author: "HPSUN"
+date: "2018年1月15日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=FALSE,echo = TRUE,warning=FALSE,message=FALSE)
+```
+
+## 1. Read data and process
+### Library
+```{r}
+library(quanteda)
+library(data.table)
+library(readr)
+```
+### Data download
+```{r}
+fileUrl = "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+if (!file.exists("Coursera-SwiftKey.zip")) {
+    download.file(fileUrl,"Coursera-SwiftKey.zip",mode = "wb",method = "auto")
+    
+}
+unzip("Coursera-SwiftKey.zip")
+```
+### Read and clean
+Read data and remove non ASCII characters by iconv(), remove numbers and "_" or ":" by gsub().
+Split them into sentence by quanteda::tokens.  
+And store it as a middle result.  
+```{r}
+read_and_process = function(file) {
+    text <- read_lines(file)
+    text = iconv(text,"UTF-8", "ASCII", sub="")
+    text = gsub("\\d+|:|_|\\(|\\)|-","", text)
+    sentence = unlist(tokens(text,what="sentence"))
+    sentence
+}
+
+in_dir = ".\\final\\en_US\\"
+out_dir = ".\\cache\\"
+for (i in c("news","blogs","twitter")){
+    in_file = paste(in_dir,"en_US.",i,".txt",sep="")
+    out_file = paste(out_dir,"sentences_",i,".txt",sep="")
+    sentences = read_and_process(in_file)
+    write_lines(sentences,out_file)
+}
+```
+### Remove profanity sentences
+bad words are coming from here:  
+http://www.bannedwordlist.com/lists/swearWords.txt
+```{r}
+fileUrl = "http://www.bannedwordlist.com/lists/swearWords.txt"
+if (!file.exists("Bad_words.en.txt")) {
+    download.file(fileUrl,"Bad_words.en.txt",mode = "wb",method = "auto")
+}
+bad_words = read_lines("Bad_words.en.txt")
+bw = paste(bad_words,collapse = "|")
+```
+remove sentences have bad words in order to have only complete sentences.   
+```{r}
+dir = ".\\cache\\"
+for (n in c("news","blogs","twitter")){
+    in_path = paste(dir,"sentences_",n,".txt",sep="")
+    out_path = paste(dir,"sentences_clean_",n,".txt",sep="")
+    s = read_lines(in_path)
+    fcon = file(out_path,"a")
+    for (i in s){
+        if(grepl(bw,tolower(i))) {
+            next
+        }
+        writeLines(i,fcon)
+    }
+    close(fcon)
+}
+```
+
+## 2. Build ngram
+### Make ngram seperately
+```{r}
+make_token = function(sentences) {
+    token = tokens(sentences, remove_numbers = TRUE,  remove_punct = TRUE, remove_url = TRUE, remove_twitter = TRUE, remove_symbols = TRUE, remove_hyphens = TRUE)
+    token
+}
+
+make_ngram2 = function(toks, n) {
+    token = tokens_ngrams(toks, n)
+    ng = dfm(token)
+    ngrams = data.table(ngram = featnames(ng),n = colSums(ng),key="ngram")
+    ngrams
+}
+
+s = read_lines(".\\cache\\sentences_clean_blogs.txt")
+toks = make_token(s)
+n1gram = make_ngram2(toks,1)
+fwrite(n1gram,".\\cache\\n1_b.txt")
+n2gram = make_ngram2(toks,2)
+fwrite(n2gram,".\\cache\\n2_b.txt")
+n3gram = make_ngram2(toks,3)
+fwrite(n3gram,".\\cache\\n3_b.txt")
+n4gram = make_ngram2(toks,4)
+fwrite(n4gram,".\\cache\\n4_b.txt")
+
+s = read_lines(".\\cache\\sentences_clean_news.txt")
+toks = make_token(s)
+n1gram = make_ngram2(toks,1)
+fwrite(n1gram,".\\cache\\n1_n.txt")
+n2gram = make_ngram2(toks,2)
+fwrite(n2gram,".\\cache\\n2_n.txt")
+n3gram = make_ngram2(toks,3)
+fwrite(n3gram,".\\cache\\n3_n.txt")
+n4gram = make_ngram2(toks,4)
+fwrite(n4gram,".\\cache\\n4_n.txt")
+
+s = read_lines(".\\cache\\sentences_clean_twitter.txt")
+toks = make_token(s)
+n1gram = make_ngram2(toks,1)
+fwrite(n1gram,".\\cache\\n1_t.txt")
+n2gram = make_ngram2(toks,2)
+fwrite(n2gram,".\\cache\\n2_t.txt")
+n3gram = make_ngram2(toks,3)
+fwrite(n3gram,".\\cache\\n3_t.txt")
+n4gram = make_ngram2(toks,4)
+fwrite(n4gram,".\\cache\\n4_t.txt")
+```
+### Put them together
+```{r}
+gram = fread(".\\cache\\n1_b.txt")
+temp = fread(".\\cache\\n1_n.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+temp = fread(".\\cache\\n1_t.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+setorder(gram,ngram)
+fwrite(gram,".\\cache\\n1gram.txt")
+
+gram = fread(".\\cache\\n2_b.txt")
+temp = fread(".\\cache\\n2_n.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+temp = fread(".\\cache\\n2_t.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+setorder(gram,ngram)
+fwrite(gram,".\\cache\\n2gram.txt")
+
+gram = fread(".\\cache\\n3_b.txt")
+temp = fread(".\\cache\\n3_n.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+temp = fread(".\\cache\\n3_t.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+setorder(gram,ngram)
+fwrite(gram,".\\cache\\n3gram.txt")
+
+gram = fread(".\\cache\\n4_b.txt")
+temp = fread(".\\cache\\n4_n.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+temp = fread(".\\cache\\n4_t.txt")
+x = rbind(gram,temp)
+gram = x[,sum(n),by="ngram"]
+colnames(gram) = c("ngram","n")
+setorder(gram,ngram)
+fwrite(gram,".\\cache\\n4gram.txt")
+```
+
+## 3. Calculate frequency
+### n1,n2 and n3
+```{r}
+n1 = fread(".\\cache\\n1gram.txt")
+n1[,frq:= n/sum(n)]
+colnames(n1) = c("word","n","frq")
+setorder(n1,-frq)
+fwrite(n1,".\\cache\\n1_ful.txt")
+
+n2 = fread(".\\cache\\n2gram.txt")
+n2[,c("pre","last"):=tstrsplit(ngram,"_",fixed=TRUE)]
+n2 = n2[,c("pre","last","n")]
+n2[,frq:= n/sum(n),by=pre]
+fwrite(n2,".\\cache\\n2_ful.txt")
+
+n3 = fread(".\\cache\\n3gram.txt")
+n3[,c("w1","w2","last"):= tstrsplit(ngram,"_",fixed=TRUE)]
+n3[,c("pre"):= paste(w1,w2,sep="_")]
+n3 = n3[,c("pre","last","n")]
+n3[,frq:= n/sum(n),by=pre]
+fwrite(n3,".\\cache\\n3_ful.txt")
+```
+### n4
+I don't have enough memory, so I split n4 into 5 part and process one by one.
+```{r}
+for (i in 1:4) {
+    out_file = paste(".\\cache\\n4_p",i,".txt",sep="")
+    n4 = fread(".\\cache\\n4gram.txt",nrow=10000000,skip=(10000000*(i-1)))
+    colnames(n4) = c("ngram","n")
+    n4[,c("w1","w2","w3","last"):= tstrsplit(ngram,"_",fixed=TRUE)]
+    n4[,c("pre"):= paste(w1,w2,w3,sep="_")]
+    n4 = n4[,c("pre","last","n")]
+    fwrite(n4,out_file)
+}
+i = 5
+out_file = paste(".\\cache\\n4_p",i,".txt",sep="")
+n4 = fread(".\\cache\\n4gram.txt",skip=(10000000*(i-1)))
+colnames(n4) = c("ngram","n")
+n4[,c("w1","w2","w3","last"):= tstrsplit(ngram,"_",fixed=TRUE)]
+n4[,c("pre"):= paste(w1,w2,w3,sep="_")]
+n4 = n4[,c("pre","last","n")]
+fwrite(n4,out_file)
+```
+Here I need manually edit n4_p files, to make sure the same "pre" words in the same file
+```{r}
+for (i in 1:5) {
+    in_file = paste(".\\cache\\n4_p",i,".txt",sep="")
+    out_file = paste(".\\cache\\n4_p",i,"_frq.txt",sep="")
+    x = fread(in_file)
+    x[,frq:= n/sum(n),by=pre]
+    fwrite(x,out_file)
+}
+```
+
+## 4. ngram pruning
+```{r}
+x = fread(".\\cache\\n1_ful.txt")
+x = x[n>100000]
+fwrite(x,".\\data\\n1_trim100000.txt")
+
+x = fread(".\\cache\\n2_ful.txt")
+x = x[n>2]
+fwrite(x,".\\data\\n2_trim2.txt")
+x = x[n>3]
+fwrite(x,".\\data\\n2_trim3.txt")
+x = x[n>4]
+fwrite(x,".\\data\\n2_trim4.txt")
+x = x[n>5]
+fwrite(x,".\\data\\n2_trim5.txt")
+
+x = fread(".\\cache\\n3_ful.txt")
+x = x[n>2]
+fwrite(x,".\\data\\n3_trim2.txt")
+x = x[n>3]
+fwrite(x,".\\data\\n3_trim3.txt")
+x = x[n>4]
+fwrite(x,".\\data\\n3_trim4.txt")
+x = x[n>5]
+fwrite(x,".\\data\\n3_trim5.txt")
+
+n4 = data.table(pre="",last="",n=0,frq=0)
+for (i in 1:5) {
+    in_file = paste(".\\cache\\n4_p",i,"_frq.txt",sep="")
+    x = fread(in_file)
+    n4 = rbind(n4,x)
+    n4 = n4[n>2]
+}
+fwrite(n4,".\\data\\n4_trim2.txt")
+n4 = n4[n>3]
+fwrite(n4,".\\data\\n4_trim3.txt")
+n4 = n4[n>4]
+fwrite(n4,".\\data\\n4_trim4.txt")
+n4 = n4[n>5]
+fwrite(n4,".\\data\\n4_trim5.txt")
+```
+
+## 5. Stupid Backoff
+### Function
+This combined choosing top 10 frequently words and calculate their score together.  
+I used n4gram so the function starts with three words, but when input is less than three words, it will auto back to two or one word to search candidates, the scores are based on n4gram, so any candidates from lower ngrams are discounted.  
+And only candidates with top five scores will be returned.
+```{r}
+SB_Word_predict = function(n4,n3,n2,n1,in_put){
+    res = data.table(last=rep("",5), frq=rep(0,5))
+    while(TRUE){
+        l = length(in_put)
+        if(l>=3) {
+            query = paste(tolower(in_put[(l-2):l]),collapse = "_")
+            x = n4[pre==query,]
+            if(nrow(x)>0) {
+                setorder(x,-n)
+                res = rbind(res,x[1:10,c("last","frq")])
+                setorder(res,-frq)
+                res = res[!is.na(res$frq)]
+                res = res[frq>0]
+                in_put = in_put[(l-1):l]
+                if (nrow(res)>5) {
+                    break
+                }
+            } else {
+                in_put = in_put[(l-1):l]
+            }
+        }else if(l==2) {
+            query = paste(tolower(in_put),collapse = "_")
+            x = n3[pre==query,]
+            x = x[!last %in% res$last]
+            if(nrow(x)>0) {
+                setorder(x,-n)
+                x[,frq:=frq*0.4]
+                res = rbind(res,x[1:10,c("last","frq")])
+                setorder(res,-frq)
+                res = res[!is.na(res$frq)]
+                res = res[frq>0]
+                in_put = in_put[2]
+                if (nrow(res)>5) {
+                    break
+                }                
+            } else {
+                in_put = in_put[2]
+            }
+        }else if(l==1) {
+            query = in_put
+            x = n2[pre==query,]
+            x = x[!last %in% res$last]
+            if(nrow(x)>0) {
+                setorder(x,-n)
+                x[,frq:=frq*0.4*0.4]
+                res = rbind(res,x[1:10,c("last","frq")])
+                setorder(res,-frq)
+                res = res[!is.na(res$frq)]
+                res = res[frq>0]
+                if (nrow(res)>5) {
+                    break
+                }                 
+            } else {
+                x = n1[1:10,c("word","frq")]
+                x[,frq:=frq*0.4*0.4*0.4]
+                colnames(x) = c("last","frq")
+                x = x[!last %in% res$last]
+                res = rbind(res,x)
+                break
+            }            
+        }
+    }
+    setorder(res,-frq)
+    colnames(res) = c("Candidate","Score")
+    res[1:5]
+}
+```
+
+## 6. Performance test
+### Test data
+I used 0.1% of the clean data for testing.
+```{r}
+s = read_lines(".\\cache\\sentences_clean_blogs.txt")
+s1 = sample(s,floor(length(s)*0.001))
+s = read_lines(".\\cache\\sentences_clean_news.txt")
+s2 = sample(s,floor(length(s)*0.001))
+s = read_lines(".\\cache\\sentences_clean_twitter.txt")
+s3 = sample(s,floor(length(s)*0.001))
+s = c(s1,s2,s3)
+write_lines(s,".\\data\\test_sample.txt")
+```
+### Functions
+```{r}
+eval_model = function(toks,n4,n3,n2,n1){
+    accu = data.table(first=-1,second=-1,third=-1,fourth=-1,fifth=-1)
+    for (i in 1:length(toks)){
+        st = unlist(toks[i])
+        if (length(st) < 4) {
+            next
+        }
+        accui = accuracy_sentence(st,n4,n3,n2,n1)
+        accu = rbind(accu,data.table(first=accui[1],second=accui[2],third=accui[3],fourth=accui[4],fifth=accui[5]))
+    }
+    accu[-1]
+}
+
+accuracy_sentence = function(sentence,n4,n3,n2,n1) {
+    l = length(sentence)
+    accu = data.table(first=rep(0,l-3),second=rep(0,l-3),third=rep(0,l-3),fourth=rep(0,l-3),fifth=rep(0,l-3))
+    for (i in 1:(length(sentence)-3)) {
+        in_put = sentence[i:(i+2)]
+        y = tolower(sentence[i+3])
+        y_hat = SB_Word_predict(n4,n3,n2,n1,in_put)
+        if (y == y_hat[1,Candidate]) {
+            accu[i,1]=1
+        } else if (y == y_hat[2,Candidate]) {
+            accu[i,2]=1
+        } else if (y == y_hat[3,Candidate]) {
+            accu[i,3]=1
+        } else if (y == y_hat[4,Candidate]) {
+            accu[i,4]=1
+        } else if (y == y_hat[5,Candidate]) {
+            accu[i,5]=1
+        }
+    }
+    colMeans(accu)
+}
+```
+### Ballence the accuarcy and the memory usage
+```{r}
+s = read_lines(".\\data\\test_sample.txt")
+toks = make_token(s)
+n1 = fread(".\\data\\n1_trim100000.txt")
+n2_2 = fread(".\\data\\n2_trim2.txt")
+n3_2 = fread(".\\data\\n3_trim2.txt")
+n4_2 = fread(".\\data\\n4_trim2.txt")
+n2_3 = fread(".\\data\\n2_trim3.txt")
+n3_3 = fread(".\\data\\n3_trim3.txt")
+n4_3 = fread(".\\data\\n4_trim3.txt")
+n2_4 = fread(".\\data\\n2_trim4.txt")
+n3_4 = fread(".\\data\\n3_trim4.txt")
+n4_4 = fread(".\\data\\n4_trim4.txt")
+n2_5 = fread(".\\data\\n2_trim5.txt")
+n3_5 = fread(".\\data\\n3_trim5.txt")
+n4_5 = fread(".\\data\\n4_trim5.txt")
+```
+I test ngrams with different prune thresholds
+```{r}
+con = data.table(n2=rep(c(2,3,4,5),each=16),n3=rep(c(2,3,4,5),each=4,time=4),n4=rep(c(2,3,4,5),time=16))
+res = data.table(first=rep(0,nrow(con)),second=rep(0,nrow(con)),third=rep(0,nrow(con)),fourth=rep(0,nrow(con)),fifth=rep(0,nrow(con)))
+s = data.table(n2_size = rep(0,nrow(con)),n3_size=rep(0,nrow(con)),n4_size=rep(0,nrow(con)))
+for (i in 1:nrow(con)){
+    n2_file = paste("n2_",con[i,n2],sep="")
+    n3_file = paste("n3_",con[i,n3],sep="")
+    n4_file = paste("n4_",con[i,n4],sep="")
+    n2 = get(n2_file)
+    n3 = get(n3_file)
+    n4 = get(n4_file)
+    res_temp = colMeans(eval_model(toks,n4,n3,n2,n1))
+    res[i,1] = res_temp[1]
+    res[i,2] = res_temp[2]
+    res[i,3] = res_temp[3]
+    res[i,4] = res_temp[4]
+    res[i,5] = res_temp[5]
+    s[i,1] = object.size(n2)
+    s[i,2] = object.size(n3)
+    s[i,3] = object.size(n4)
+}
+
+performance = cbind(con,res,s)
+performance$total = rowSums(a[,c("first","second","third","fourth","fifth")])
+performance$t_size = rowSums(a[,c("n2_size","n3_size","n4_size")])/(1024^2)
+fwrite(performance,"performance.txt")
+```
+Finally, I choosed threshold n2gram >5 counts, n3gram >3 counts, n4gram >2 counts.  
+Whit this data, the accuracy of first one hit is about 20%, and all top five candidates hit is about 36.7%.
+
+Then, the time cost at this condition was tested using 100 predicts average time cost. And the average 100-predicts time cost is 0.828 sec, that means one prediction will only cost 0.008 sec on average!
+```{r}
+n2 = n2_5
+n3 = n3_3
+n4 = n4_2
+
+timecost = rep(0,100)
+for (i in 1:100){
+    testsample = sample(s,100)
+    time0 = Sys.time()
+    for (j in 1:100) {
+        x = testsample[j]
+        x = gsub(",|\\.|;|:"," ",x)
+        y = unlist(strsplit(x,split=" "))
+        y = y[which(y!="")]
+                if (length(y)<1) {
+            res = ""
+        }else {
+            res = SB_Word_predict(n4,n3,n2,n1,y)[,1]
+        }
+    }
+    time1 = Sys.time()
+    timecost[i] = time1-time0
+}
+mean(timecost)
+```
+
+
