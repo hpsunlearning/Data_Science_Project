@@ -28,7 +28,7 @@ Ngrams was build using "quanteda" package. from 2 up to 4-grams were build using
 I chooses "Stupid Backoff" to build my word predict model.  
 The reason is because it's very simple, doesn't require complicate discount methods; and easy for pruning, after pruning, you don't need to recalculate discounting weight. 
 - Pruning  
-ngrams was pruned to keep only appeared more than n times. This n is in range 2-5, I use test data to balance the accuracy and the size. finally choose .
+ngrams was pruned to keep only appeared more than n times. This n is in range 2-5, I use test data to balance the accuracy and the size. finally choose n2=5,n3=3,n4=2.
 
 
 
@@ -41,7 +41,7 @@ Then, you need to type some word in the input area, it will start to return the 
 ***
 The app is simple and fast
 - the accuracy tested by 0.1% dataset is 20% first hit, 36.7% top five hits
-- average time usage per prediction is about 0.008 sec
+- average time usage per prediction is about 0.008 sec  
     it is really fast, while you typing, the result is changing
 - total package is about 37.3 MB 
 - memory usage of the ngrams data is about 242 MB
