@@ -20,15 +20,11 @@ Our task is to build an app that can predict the next word you want to input, an
 
 Algorithm
 ========================================================
-- Data  
-Coursera provide us corpora. After necessary cleaning and processing, I got about 487M data in total.
-- Process  
-Ngrams was build using "quanteda" package. from 2 up to 4-grams were build using all the clean data.
-- Algorithm  
-I chooses "Stupid Backoff" to build my word predict model. Because it's simple, doesn't require complicate discount methods; and easy for pruning. 
-- Pruning  
-ngrams was pruned to keep only ngrams appeared more than n times. This can save a lot of space. I used test data to balance the accuracy and the size.
-
+- Data: Coursera provide us corpora. After necessary cleaning and processing, I got about 487M data in total.
+- Process: Ngrams was build using "quanteda" package. from 2 up to 4-grams were build using all the clean data.
+- Algorithm: I chooses "Stupid Backoff" to build my word predict model. Because it's simple, doesn't require complicate discount methods; and easy for pruning.    
+- Pruning: ngrams was pruned to keep only ngrams appeared more than n times. This can save a lot of space. I used test data to balance the accuracy and the size.  
+- The algorithm find most count ngrams to provide candidate, and the candidates are scoring using "Stupid Backoff", and sorted return top 5 high score candidates.
 
 
 APP 

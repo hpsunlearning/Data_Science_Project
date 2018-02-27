@@ -775,14 +775,11 @@ Our task is to build an app that can predict the next word you want to input, an
 <h3>Algorithm</h3>
 <div class="slideContent" >
 <ul>
-<li>Data<br/>
-Coursera provide us corpora. After necessary cleaning and processing, I got about 487M data in total.</li>
-<li>Process<br/>
-Ngrams was build using &ldquo;quanteda&rdquo; package. from 2 up to 4-grams were build using all the clean data.</li>
-<li>Algorithm<br/>
-I chooses &ldquo;Stupid Backoff&rdquo; to build my word predict model. Because it&#39;s simple, doesn&#39;t require complicate discount methods; and easy for pruning. </li>
-<li>Pruning<br/>
-ngrams was pruned to keep only ngrams appeared more than n times. This can save a lot of space. I used test data to balance the accuracy and the size.</li>
+<li>Data: Coursera provide us corpora. After necessary cleaning and processing, I got about 487M data in total.</li>
+<li>Process: Ngrams was build using &ldquo;quanteda&rdquo; package. from 2 up to 4-grams were build using all the clean data.</li>
+<li>Algorithm: I chooses &ldquo;Stupid Backoff&rdquo; to build my word predict model. Because it&#39;s simple, doesn&#39;t require complicate discount methods; and easy for pruning.<br/></li>
+<li>Pruning: ngrams was pruned to keep only ngrams appeared more than n times. This can save a lot of space. I used test data to balance the accuracy and the size.<br/></li>
+<li>The algorithm find most count ngrams to provide candidate, and the candidates are scoring using &ldquo;Stupid Backoff&rdquo;, and sorted return top 5 high score candidates.</li>
 </ul>
 
 </div>
